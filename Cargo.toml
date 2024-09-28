@@ -1,0 +1,9 @@
+[package]
+name = "sch"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+plonky2 = { git = "https://github.com/mir-protocol/plonky2" }
+anyhow = "1.0.56"
+rand = "0.8.5"
