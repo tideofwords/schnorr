@@ -9,30 +9,30 @@ use rand::Rng;
 const BIG_GROUP_GEN: GoldilocksField = GoldilocksField(14293326489335486720);
 
 #[derive(Copy, Clone, Debug)]
-struct SchnorrSigner {
+pub struct SchnorrSigner {
     PRIME_GROUP_GEN: GoldilocksField,
     PRIME_GROUP_ORDER: u64,
 }
 
 #[derive(Copy, Clone, Debug)]
 
-struct SchnorrSecretKey {
-    sk: u64,
+pub struct SchnorrSecretKey {
+    pub sk: u64,
 }
 
 #[derive(Copy, Clone, Debug)]
-struct SchnorrPublicKey {
-    pk: GoldilocksField,
+pub struct SchnorrPublicKey {
+    pub pk: GoldilocksField,
 }
 
 #[derive(Copy, Clone, Debug)]
-struct SchnorrSignature {
-    s: u64,
-    e: u64,
+pub struct SchnorrSignature {
+    pub s: u64,
+    pub e: u64,
 }
 
 impl SchnorrSigner{
-    fn new() -> Self {
+    pub fn new() -> Self {
         let quotient_order: u64 = (1 << 48) - (1 << 32);
         let PRIME_GROUP_GEN: GoldilocksField = Self::pow(BIG_GROUP_GEN, quotient_order);
         let PRIME_GROUP_ORDER: u64 = (1 << 16) + 1;
@@ -53,7 +53,7 @@ impl SchnorrSigner{
         res
     }
 
-    fn keygen(&self, sk: &SchnorrSecretKey) -> SchnorrPublicKey {
+    pub fn keygen(&self, sk: &SchnorrSecretKey) -> SchnorrPublicKey {
         let pk: GoldilocksField = Self::pow(self.PRIME_GROUP_GEN, sk.sk).inverse();
         println!("{:?}", self.PRIME_GROUP_GEN);
         // self.PRIME_GROUP_GEN is 6612579038192137166
@@ -76,13 +76,13 @@ impl SchnorrSigner{
         rng.gen_range(0..group_order)
     }
 
-    fn u64_into_goldilocks_vec(&self, msg: Vec<u64>) -> Vec<GoldilocksField> {
+    pub fn u64_into_goldilocks_vec(&self, msg: Vec<u64>) -> Vec<GoldilocksField> {
         msg.into_iter()
             .map(|x| GoldilocksField::from_noncanonical_u64(x))
             .collect()
     }
 
-    fn sign(&self, msg: &Vec<GoldilocksField>, sk: &SchnorrSecretKey, rng: &mut rand::rngs::ThreadRng) -> SchnorrSignature {
+    pub fn sign(&self, msg: &Vec<GoldilocksField>, sk: &SchnorrSecretKey, rng: &mut rand::rngs::ThreadRng) -> SchnorrSignature {
         let k: u64 = self.rand_group_multiplier(rng);
         let r: GoldilocksField = Self::pow(self.PRIME_GROUP_GEN, k);
         let e: u64 = self.hash_insecure(&r, msg);
@@ -98,7 +98,7 @@ impl SchnorrSigner{
         SchnorrSignature{e, s}
     }
 
-    fn verify(&self, sig: &SchnorrSignature, msg: &Vec<GoldilocksField>, pk: &SchnorrPublicKey) -> bool {
+    pub fn verify(&self, sig: &SchnorrSignature, msg: &Vec<GoldilocksField>, pk: &SchnorrPublicKey) -> bool {
         let r: GoldilocksField = Self::pow(self.PRIME_GROUP_GEN, sig.s)
             * Self::pow(pk.pk, sig.e);
         let e_v: u64 = self.hash_insecure(&r, msg);
