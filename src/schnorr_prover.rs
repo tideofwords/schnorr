@@ -78,8 +78,30 @@ impl SchnorrPublicKeyTarget {
 
 pub struct SchnorrBuilder {}
 
-impl SchnorrBuilder {
-    pub fn constrain_sig <
+pub trait SignatureVerifierBuilder {
+    fn constrain_sig <
+        C: GenericConfig<2, F = GoldF>,
+    > (
+        &self,
+        builder: &mut CircuitBuilder::<GoldF, 2>,
+        sig: &SchnorrSignatureTarget,
+        msg: &MessageTarget,
+        pk: &SchnorrPublicKeyTarget,
+    );
+
+    fn verify_sig <
+        C: GenericConfig<2, F = GoldF>,
+    > (
+        &self,
+        builder: &mut CircuitBuilder::<GoldF, 2>,
+        sig: &SchnorrSignatureTarget,
+        msg: &MessageTarget,
+        pk: &SchnorrPublicKeyTarget,
+    ) -> BoolTarget;
+}
+
+impl SignatureVerifierBuilder for SchnorrBuilder {
+    fn constrain_sig <
         C: GenericConfig<2, F = GoldF>,
     > (
         &self,
@@ -93,7 +115,7 @@ impl SchnorrBuilder {
         builder.connect(verification_output.target, true_target.target);
     }
 
-    pub fn verify_sig <
+    fn verify_sig <
         C: GenericConfig<2, F = GoldF>,
     > (
         &self,

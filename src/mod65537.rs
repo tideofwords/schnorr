@@ -19,8 +19,6 @@ use crate::schnorr::{SchnorrPublicKey, SchnorrSignature};
 
 type GoldF = GoldilocksField;
 
-
-
 #[derive(Debug, Default)]
 pub struct Mod65537Generator {
     a: Target,
