@@ -182,9 +182,11 @@ impl SchnorrBuilder {
         let hash_input: Vec<Target> = std::iter::once(r)
             .chain(msg.msg.iter().cloned()) 
             .collect();
-        let e: Target = builder.hash_n_to_hash_no_pad::<PoseidonHash>(
+        let hash_output: Target = builder.hash_n_to_hash_no_pad::<PoseidonHash>(
             hash_input,
         ).elements[0]; // whoops have to take mod group order;
+
+        let e: Target = Self::mod_65537(builder, hash_output);
 
         // enforce equality
         builder.connect(e, sig.e);
