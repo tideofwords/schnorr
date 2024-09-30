@@ -173,8 +173,6 @@ mod tests{
         let sig_targ = SchnorrSignatureTarget::new_virtual(&mut builder);
         let msg_targ = MessageTarget::new_with_size(&mut builder, msg_size);
 
-        
-        // instead of verifying we're going to prove the verification
         sb.constrain_sig::<PoseidonGoldilocksConfig> (
             &mut builder,
             &sig_targ,
@@ -188,6 +186,111 @@ mod tests{
         sig_targ.set_witness(&mut pw, &sig).unwrap();
         msg_targ.set_witness(&mut pw, &msg).unwrap();
 
+
+        let data = builder.build::<C>();
+        let proof = data.prove(pw).unwrap();
+    }
+
+    #[test]
+    fn test_schnorr_fails() {
+        const D: usize = 2;
+        type C = PoseidonGoldilocksConfig;
+        type F = <C as GenericConfig<D>>::F;
+
+        let mut rng: rand::rngs::ThreadRng = rand::thread_rng();
+
+        let config = CircuitConfig::standard_recursion_config();
+        let mut builder = CircuitBuilder::<F, D>::new(config);
+
+        let sb: SchnorrBuilder = SchnorrBuilder{};
+
+        // create keypair, message, signature
+        let sk: SchnorrSecretKey = SchnorrSecretKey{ sk: 133 };
+        let ss = SchnorrSigner::new();
+        let pk: SchnorrPublicKey = ss.keygen(&sk);
+        let msg0: Vec<GoldilocksField> = ss.u64_into_goldilocks_vec(
+            vec![1500, 1600, 0, 0, 0]
+        );
+        let msg_size: usize = msg0.len();
+        let sig: SchnorrSignature = ss.sign(&msg0, &sk, &mut rng);
+
+        let msg1: Vec<GoldilocksField> = ss.u64_into_goldilocks_vec(
+            vec![1510, 1600, 0, 0, 0]
+        );
+
+        let pk_targ = SchnorrPublicKeyTarget::new_virtual(&mut builder);
+        let sig_targ = SchnorrSignatureTarget::new_virtual(&mut builder);
+        let msg_targ = MessageTarget::new_with_size(&mut builder, msg_size);
+
+        let verification_result = sb.verify_sig::<PoseidonGoldilocksConfig> (
+            &mut builder,
+            &sig_targ,
+            &msg_targ,
+            &pk_targ
+        );
+
+        // assign witnesses for verification
+        let mut pw: PartialWitness<F> = PartialWitness::new();
+        pk_targ.set_witness(&mut pw, &pk).unwrap();
+        sig_targ.set_witness(&mut pw, &sig).unwrap();
+        msg_targ.set_witness(&mut pw, &msg1).unwrap();
+
+        // check value of verification result
+        let false_target = builder._false();
+        builder.connect(verification_result.target, false_target.target);
+
+        let data = builder.build::<C>();
+        let proof = data.prove(pw).unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_schnorr_panics() {
+        const D: usize = 2;
+        type C = PoseidonGoldilocksConfig;
+        type F = <C as GenericConfig<D>>::F;
+
+        let mut rng: rand::rngs::ThreadRng = rand::thread_rng();
+
+        let config = CircuitConfig::standard_recursion_config();
+        let mut builder = CircuitBuilder::<F, D>::new(config);
+
+        let sb: SchnorrBuilder = SchnorrBuilder{};
+
+        // create keypair, message, signature
+        let sk: SchnorrSecretKey = SchnorrSecretKey{ sk: 133 };
+        let ss = SchnorrSigner::new();
+        let pk: SchnorrPublicKey = ss.keygen(&sk);
+        let msg0: Vec<GoldilocksField> = ss.u64_into_goldilocks_vec(
+            vec![1500, 1600, 0, 0, 0]
+        );
+        let msg_size: usize = msg0.len();
+        let sig: SchnorrSignature = ss.sign(&msg0, &sk, &mut rng);
+
+        let msg1: Vec<GoldilocksField> = ss.u64_into_goldilocks_vec(
+            vec![1510, 1600, 0, 0, 0]
+        );
+
+        let pk_targ = SchnorrPublicKeyTarget::new_virtual(&mut builder);
+        let sig_targ = SchnorrSignatureTarget::new_virtual(&mut builder);
+        let msg_targ = MessageTarget::new_with_size(&mut builder, msg_size);
+
+        let verification_result = sb.verify_sig::<PoseidonGoldilocksConfig> (
+            &mut builder,
+            &sig_targ,
+            &msg_targ,
+            &pk_targ
+        );
+
+        // assign witnesses for verification
+        let mut pw: PartialWitness<F> = PartialWitness::new();
+        pk_targ.set_witness(&mut pw, &pk).unwrap();
+        sig_targ.set_witness(&mut pw, &sig).unwrap();
+        msg_targ.set_witness(&mut pw, &msg1).unwrap();
+
+        // value of verification result should be false
+        let true_target = builder._true();
+        builder.connect(verification_result.target, true_target.target);
 
         let data = builder.build::<C>();
         let proof = data.prove(pw).unwrap();
