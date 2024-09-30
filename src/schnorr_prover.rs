@@ -158,7 +158,7 @@ impl SignatureVerifierBuilder for SchnorrBuilder {
 #[cfg(test)]
 mod tests{
     use crate::schnorr::{SchnorrPublicKey, SchnorrSecretKey, SchnorrSigner, SchnorrSignature};
-    use crate::schnorr_prover::{MessageTarget, SchnorrBuilder, SchnorrPublicKeyTarget, SchnorrSignatureTarget};
+    use crate::schnorr_prover::{MessageTarget, SchnorrBuilder, SchnorrPublicKeyTarget, SchnorrSignatureTarget, SignatureVerifierBuilder};
     use plonky2::iop::witness::PartialWitness;
     use plonky2::plonk::{
         circuit_builder::CircuitBuilder,
