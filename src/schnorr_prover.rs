@@ -2,11 +2,11 @@ use anyhow::Result;
 
 use plonky2::iop::{
     target::Target,
-    witness::{PartialWitness, PartitionWitness, Witness, WitnessWrite},
+    witness::{PartialWitness, WitnessWrite},
 };
 use plonky2::field::{
     goldilocks_field::GoldilocksField,
-    types::{Field, PrimeField64},
+    types::Field,
 };
 use plonky2::hash::poseidon::PoseidonHash;
 use plonky2::plonk::{
@@ -79,8 +79,6 @@ impl SchnorrPublicKeyTarget {
 pub struct SchnorrBuilder {}
 
 impl SchnorrBuilder {
-
-
     pub fn constrain_sig <
         C: GenericConfig<2, F = GoldF>,
     > (
@@ -124,27 +122,14 @@ impl SchnorrBuilder {
 #[cfg(test)]
 mod tests{
     use crate::schnorr::{SchnorrPublicKey, SchnorrSecretKey, SchnorrSigner, SchnorrSignature};
-    use crate::schnorr_prover::{MessageTarget, Mod65537Builder, SchnorrBuilder, SchnorrPublicKeyTarget, SchnorrSignatureTarget};
-    use plonky2::hash::poseidon::Poseidon;
-    use plonky2::iop::{
-        target::Target,
-        witness::{PartialWitness, PartitionWitness, Witness, WitnessWrite},
-    };
+    use crate::schnorr_prover::{MessageTarget, SchnorrBuilder, SchnorrPublicKeyTarget, SchnorrSignatureTarget};
+    use plonky2::iop::witness::PartialWitness;
     use plonky2::plonk::{
         circuit_builder::CircuitBuilder,
-        circuit_data::{
-            CircuitConfig, 
-            CircuitData, 
-            CommonCircuitData, 
-            VerifierCircuitData, 
-            VerifierOnlyCircuitData
-        },
+        circuit_data::CircuitConfig,
         config::{GenericConfig, PoseidonGoldilocksConfig},
     };
-    use plonky2::field::{
-        goldilocks_field::GoldilocksField,
-        types::Field,
-    };
+    use plonky2::field::goldilocks_field::GoldilocksField;
     use rand;
 
     #[test]
@@ -185,9 +170,9 @@ mod tests{
 
         // assign witnesses for verification
         let mut pw: PartialWitness<F> = PartialWitness::new();
-        pk_targ.set_witness(&mut pw, &pk);
-        sig_targ.set_witness(&mut pw, &sig);
-        msg_targ.set_witness(&mut pw, &msg);
+        pk_targ.set_witness(&mut pw, &pk).unwrap();
+        sig_targ.set_witness(&mut pw, &sig).unwrap();
+        msg_targ.set_witness(&mut pw, &msg).unwrap();
 
 
         let data = builder.build::<C>();
