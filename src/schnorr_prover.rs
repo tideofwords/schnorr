@@ -1,16 +1,31 @@
 use anyhow::Result;
-use plonky2::iop::generator::{GeneratedValues, SimpleGenerator};
-use plonky2::iop::target::{BoolTarget, Target};
-use plonky2::iop::witness::{PartialWitness, PartitionWitness, Witness, WitnessWrite};
-use plonky2::field::extension::{Extendable, FieldExtension};
-use plonky2::field::types::{Field, PrimeField64};
-use plonky2::field::goldilocks_field::GoldilocksField;
-use plonky2::hash::hash_types::RichField;
-use plonky2::hash::poseidon::PoseidonHash;
-use plonky2::plonk::circuit_builder::CircuitBuilder;
-use plonky2::plonk::circuit_data::{CircuitConfig, CircuitData, CommonCircuitData, VerifierCircuitData, VerifierOnlyCircuitData};
-use plonky2::plonk::config::{GenericConfig, PoseidonGoldilocksConfig};
-use plonky2::plonk::proof::ProofWithPublicInputs;
+
+use plonky2::iop::{
+    generator::{GeneratedValues, SimpleGenerator},
+    target::{BoolTarget, Target},
+    witness::{PartialWitness, PartitionWitness, Witness, WitnessWrite},
+};
+use plonky2::field::{
+    extension::{Extendable, FieldExtension},
+    goldilocks_field::GoldilocksField,
+    types::{Field, PrimeField64},
+};
+use plonky2::hash::{
+    hash_types::RichField,
+    poseidon::PoseidonHash,
+};
+use plonky2::plonk::{
+    circuit_builder::CircuitBuilder,
+    circuit_data::{
+        CircuitConfig, 
+        CircuitData,
+        CommonCircuitData, 
+        VerifierCircuitData, 
+        VerifierOnlyCircuitData
+    },
+    config::{GenericConfig, PoseidonGoldilocksConfig},
+    proof::ProofWithPublicInputs,
+};
 use plonky2::util::serialization::{Buffer, IoResult, Read, Write};
 
 use crate::schnorr::{SchnorrPublicKey, SchnorrSignature};
@@ -226,13 +241,25 @@ mod tests{
     use crate::schnorr::{SchnorrPublicKey, SchnorrSecretKey, SchnorrSigner, SchnorrSignature};
     use crate::schnorr_prover::{MessageTarget, SchnorrBuilder, SchnorrPublicKeyTarget, SchnorrSignatureTarget};
     use plonky2::hash::poseidon::Poseidon;
-    use plonky2::iop::target::Target;
-    use plonky2::iop::witness::{PartialWitness, PartitionWitness, Witness, WitnessWrite};
-    use plonky2::plonk::circuit_builder::CircuitBuilder;
-    use plonky2::plonk::circuit_data::{CircuitConfig, CircuitData, CommonCircuitData, VerifierCircuitData, VerifierOnlyCircuitData};
-    use plonky2::plonk::config::{GenericConfig, PoseidonGoldilocksConfig};
-    use plonky2::field::goldilocks_field::GoldilocksField;
-    use plonky2::field::types::Field;
+    use plonky2::iop::{
+        target::Target,
+        witness::{PartialWitness, PartitionWitness, Witness, WitnessWrite},
+    };
+    use plonky2::plonk::{
+        circuit_builder::CircuitBuilder,
+        circuit_data::{
+            CircuitConfig, 
+            CircuitData, 
+            CommonCircuitData, 
+            VerifierCircuitData, 
+            VerifierOnlyCircuitData
+        },
+        config::{GenericConfig, PoseidonGoldilocksConfig},
+    };
+    use plonky2::field::{
+        goldilocks_field::GoldilocksField,
+        types::Field,
+    };
     use rand;
 
     #[test]
