@@ -1,22 +1,26 @@
 use anyhow::Result;
+use plonky2::iop::generator::{GeneratedValues, SimpleGenerator};
+use plonky2::iop::target::{BoolTarget, Target};
+use plonky2::iop::witness::{PartialWitness, PartitionWitness, Witness, WitnessWrite};
 use plonky2::field::extension::{Extendable, FieldExtension};
-use plonky2::field::types::Field;
+use plonky2::field::types::{Field, PrimeField64};
 use plonky2::field::goldilocks_field::GoldilocksField;
 use plonky2::hash::hash_types::RichField;
 use plonky2::hash::poseidon::PoseidonHash;
-use plonky2::iop::target::{BoolTarget, Target};
-use plonky2::iop::witness::{PartialWitness, WitnessWrite};
 use plonky2::plonk::circuit_builder::CircuitBuilder;
 use plonky2::plonk::circuit_data::{CircuitConfig, CircuitData, CommonCircuitData, VerifierCircuitData, VerifierOnlyCircuitData};
 use plonky2::plonk::config::{GenericConfig, PoseidonGoldilocksConfig};
 use plonky2::plonk::proof::ProofWithPublicInputs;
+use plonky2::util::serialization::{Buffer, IoResult, Read, Write};
+
+type GoldF = GoldilocksField;
 
 pub struct MessageTarget {
     msg: Vec<Target>,
 }
 
 impl MessageTarget {
-    fn new_with_size(builder: &mut CircuitBuilder<GoldilocksField, 2>, n: usize) -> Self {
+    fn new_with_size(builder: &mut CircuitBuilder<GoldF, 2>, n: usize) -> Self {
         Self {
             msg: builder.add_virtual_targets(n),
         }
@@ -29,7 +33,7 @@ pub struct SchnorrSignatureTarget {
 }
 
 impl SchnorrSignatureTarget {
-    fn new_virtual(builder: &mut CircuitBuilder<GoldilocksField, 2>) -> Self {
+    fn new_virtual(builder: &mut CircuitBuilder<GoldF, 2>) -> Self {
         let s = builder.add_virtual_target();
         let e = builder.add_virtual_target();
         Self{ s, e }
@@ -45,6 +49,50 @@ pub struct Mod65537Generator {
     a: Target,
     q: Target,
     r: Target,
+}
+
+impl SimpleGenerator<GoldF, 2> for Mod65537Generator {
+    fn id(&self) -> String {
+        "Mod65537Generator".to_string()
+    }
+    fn dependencies(&self) -> Vec<Target> {
+        vec![self.a]
+    }
+
+    fn run_once(
+        &self,
+        witness: &PartitionWitness<GoldF>,
+        out_buffer: &mut GeneratedValues<GoldF>,
+    ) -> Result<()> {
+        let a = witness.get_target(self.a);
+        let a64 = a.to_canonical_u64();
+        let q64 = a64 / 65537;
+        let r64 = a64 % 65537;
+
+        out_buffer.set_target(self.q, GoldF::from_canonical_u64(q64));
+        out_buffer.set_target(self.r, GoldF::from_canonical_u64(r64));
+
+        Ok(())
+    }
+
+    fn serialize(&self, dst: &mut Vec<u8>, common_data: &CommonCircuitData<GoldF, 2>) -> IoResult<()> {
+        println!("SERIALIZATION!  What is this good for?");
+        dst.write_target(self.a)?;
+        dst.write_target(self.q)?;
+        dst.write_target(self.r)?;
+        Ok(())
+    }
+
+    fn deserialize(src: &mut Buffer, common_data: &CommonCircuitData<GoldF, 2>) -> IoResult<Self>
+    where
+        Self: Sized 
+    {
+            println!("DESERIALIZATION!  What is this good for?");
+            let a = src.read_target()?;
+            let q = src.read_target()?;
+            let r = src.read_target()?;
+            OK(Self { a, q, r })
+    }
 }
 
 pub struct SchnorrBuilder {
@@ -64,9 +112,9 @@ impl SchnorrBuilder {
     // if q = floor(p / 65537) then r = 0
     // (note that p % 65537 == 1 so this is the only possibility)
     fn mod_65537 <
-        C: GenericConfig<2, F = GoldilocksField>,
+        C: GenericConfig<2, F = GoldF>,
     > (
-        builder: &mut CircuitBuilder::<GoldilocksField, 2>,
+        builder: &mut CircuitBuilder::<GoldF, 2>,
         a: &Target,
     ) -> Target {
         let q = builder.add_virtual_target();
@@ -77,18 +125,18 @@ impl SchnorrBuilder {
 
         // impose four constraints
         // 1. a = 65537 * q + r
-        let t65537 = builder.constant(GoldilocksField::from_canonical_u64(65537));
+        let t65537 = builder.constant(GoldF::from_canonical_u64(65537));
         let a_copy = builder.mul_add(t65537, q, r);
         builder.connect(*a, a_copy);
 
         // 2. 0 <= q <= floor(p / 65537)
         // max_q is 281470681743360 = floor(p / 65537) = (p-1) / 65537 = 2^48 - 2^32
-        let max_q = builder.constant(GoldilocksField::from_canonical_u64(281470681743360));
+        let max_q = builder.constant(GoldF::from_canonical_u64(281470681743360));
         builder.range_check(q, 48);
         builder.range_check(builder.sub(max_q, q), 48);
 
         // 3. 0 <= r < 65537
-        let max_r = builder.constant(GoldilocksField::from_canonical_u64(65537));
+        let max_r = builder.constant(GoldF::from_canonical_u64(65537));
         builder.range_check(r, 17);
         builder.range_check(builder.sub(max_r, r), 17);
 
@@ -100,20 +148,20 @@ impl SchnorrBuilder {
     }
 
     fn constrain_sig <
-        C: GenericConfig<2, F = GoldilocksField>,
+        C: GenericConfig<2, F = GoldF>,
     > (
         &self,
-        builder: &mut CircuitBuilder::<GoldilocksField, 2>,
+        builder: &mut CircuitBuilder::<GoldF, 2>,
         sig: &SchnorrSignatureTarget,
         msg: &MessageTarget,
         pk: &SchnorrPublicKeyTarget,
     ) -> () {
-        let PRIME_GROUP_GEN: Target = builder.constant(GoldilocksField::from_canonical_u64(6612579038192137166));
-        let PRIME_GROUP_ORDER: Target = builder.constant(GoldilocksField::from_canonical_u64(65537));
+        let PRIME_GROUP_GEN: Target = builder.constant(GoldF::from_canonical_u64(6612579038192137166));
+        let PRIME_GROUP_ORDER: Target = builder.constant(GoldF::from_canonical_u64(65537));
         const num_bits_exp: usize = 32;
 
         /*
-        let r: GoldilocksField = Self::pow(self.PRIME_GROUP_GEN, sig.s)
+        let r: GoldF = Self::pow(self.PRIME_GROUP_GEN, sig.s)
             * Self::pow(pk.pk, sig.e);
         let e_v: u64 = self.hash_insecure(&r, msg);
         e_v == sig.e   */
@@ -125,7 +173,7 @@ impl SchnorrBuilder {
         // compute hash
         // note that it's safe to clone Targets since they just contain indices
         let hash_input: Vec<Target> = std::iter::once(r)
-            .chain(msg.iter().cloned()) 
+            .chain(msg.msg.iter().cloned()) 
             .collect();
         let e: Target = builder.hash_n_to_hash_no_pad::<PoseidonHash>(
             hash_input,
