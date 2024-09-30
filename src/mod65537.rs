@@ -1,4 +1,3 @@
-
 use anyhow::Result;
 
 use plonky2::iop::{
@@ -13,8 +12,6 @@ use plonky2::field::{
 use plonky2::plonk::{
     circuit_builder::CircuitBuilder,
     circuit_data::CommonCircuitData,
-    config::{GenericConfig, PoseidonGoldilocksConfig},
-    proof::ProofWithPublicInputs,
 };
 use plonky2::util::serialization::{Buffer, IoResult, Read, Write};
 
@@ -131,30 +128,20 @@ impl Mod65537Builder {
 
 #[cfg(test)]
 mod tests {
-    use crate::mod65537::{Mod65537Builder, Mod65537Generator};
-    use crate::schnorr::{SchnorrPublicKey, SchnorrSecretKey, SchnorrSigner, SchnorrSignature};
-    use crate::schnorr_prover::{MessageTarget, SchnorrBuilder, SchnorrPublicKeyTarget, SchnorrSignatureTarget};
-    use plonky2::hash::poseidon::Poseidon;
+    use crate::mod65537::Mod65537Builder;
     use plonky2::iop::{
         target::Target,
-        witness::{PartialWitness, PartitionWitness, Witness, WitnessWrite},
+        witness::PartialWitness,
     };
     use plonky2::plonk::{
         circuit_builder::CircuitBuilder,
-        circuit_data::{
-            CircuitConfig, 
-            CircuitData, 
-            CommonCircuitData, 
-            VerifierCircuitData, 
-            VerifierOnlyCircuitData
-        },
+        circuit_data::CircuitConfig,
         config::{GenericConfig, PoseidonGoldilocksConfig},
     };
     use plonky2::field::{
         goldilocks_field::GoldilocksField,
         types::Field,
     };
-    use rand;
 
     #[test]
     fn test_mod65537() -> () {
@@ -193,5 +180,4 @@ mod tests {
 
         ()
     }
-
 }
