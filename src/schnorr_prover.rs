@@ -1,7 +1,7 @@
 use anyhow::Result;
 
 use plonky2::iop::{
-    target::Target,
+    target::{BoolTarget, Target},
     witness::{PartialWitness, WitnessWrite},
 };
 use plonky2::field::{
@@ -88,6 +88,20 @@ impl SchnorrBuilder {
         msg: &MessageTarget,
         pk: &SchnorrPublicKeyTarget,
     ) -> () {
+        let verification_output = self.verify_sig::<C>(builder, sig, msg, pk);
+        let true_target = builder._true();
+        builder.connect(verification_output.target, true_target.target);
+    }
+
+    pub fn verify_sig <
+        C: GenericConfig<2, F = GoldF>,
+    > (
+        &self,
+        builder: &mut CircuitBuilder::<GoldF, 2>,
+        sig: &SchnorrSignatureTarget,
+        msg: &MessageTarget,
+        pk: &SchnorrPublicKeyTarget,
+    ) -> BoolTarget {
         let PRIME_GROUP_GEN: Target = builder.constant(GoldF::from_canonical_u64(6612579038192137166));
         let PRIME_GROUP_ORDER: Target = builder.constant(GoldF::from_canonical_u64(65537));
         const num_bits_exp: usize = 32;
@@ -114,8 +128,8 @@ impl SchnorrBuilder {
 
         let e: Target = Mod65537Builder::mod_65537(builder, hash_output);
 
-        // enforce equality
-        builder.connect(e, sig.e);
+        // test equality
+        builder.is_equal(e, sig.e)
     }
 }
 
