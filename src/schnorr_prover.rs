@@ -1,35 +1,21 @@
 use anyhow::Result;
 
 use plonky2::iop::{
-    generator::{GeneratedValues, SimpleGenerator},
-    target::{BoolTarget, Target},
+    target::Target,
     witness::{PartialWitness, PartitionWitness, Witness, WitnessWrite},
 };
 use plonky2::field::{
-    extension::{Extendable, FieldExtension},
     goldilocks_field::GoldilocksField,
     types::{Field, PrimeField64},
 };
-use plonky2::hash::{
-    hash_types::RichField,
-    poseidon::PoseidonHash,
-};
+use plonky2::hash::poseidon::PoseidonHash;
 use plonky2::plonk::{
     circuit_builder::CircuitBuilder,
-    circuit_data::{
-        CircuitConfig, 
-        CircuitData,
-        CommonCircuitData, 
-        VerifierCircuitData, 
-        VerifierOnlyCircuitData
-    },
-    config::{GenericConfig, PoseidonGoldilocksConfig},
-    proof::ProofWithPublicInputs,
+    config::GenericConfig,
 };
-use plonky2::util::serialization::{Buffer, IoResult, Read, Write};
 
 use crate::{
-    mod65537::{Mod65537Builder, Mod65537Generator},
+    mod65537::Mod65537Builder,
     schnorr::{SchnorrPublicKey, SchnorrSignature},
 };
 
