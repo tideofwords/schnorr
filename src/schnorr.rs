@@ -55,7 +55,6 @@ impl SchnorrSigner{
 
     pub fn keygen(&self, sk: &SchnorrSecretKey) -> SchnorrPublicKey {
         let pk: GoldilocksField = Self::pow(self.PRIME_GROUP_GEN, sk.sk).inverse();
-        println!("{:?}", self.PRIME_GROUP_GEN);
         // self.PRIME_GROUP_GEN is 6612579038192137166
         SchnorrPublicKey{pk: pk}
     }
@@ -66,7 +65,6 @@ impl SchnorrSigner{
             .copied()
             .collect();
 
-        println!("Running hash on concatenated elts: {:?}", poseidon_input);
         let h = PoseidonHash::hash_no_pad(&poseidon_input);
         h.elements[0].to_canonical_u64() % self.PRIME_GROUP_ORDER
     }
@@ -89,9 +87,6 @@ impl SchnorrSigner{
         assert!(k < self.PRIME_GROUP_ORDER);
         assert!(sk.sk < self.PRIME_GROUP_ORDER);
         assert!(e < self.PRIME_GROUP_ORDER);
-        //println!("Super secret k: {:?}", k);
-        //println!("Super secret r: {:?}", r);
-        //println!("PRIME_GROUP_ORDER: {:?}", self.PRIME_GROUP_ORDER);
         let mut s128: u128 = ((k as u128) + (sk.sk as u128) * (e as u128));
         s128 %= self.PRIME_GROUP_ORDER as u128;
         let s: u64 = s128 as u64;
