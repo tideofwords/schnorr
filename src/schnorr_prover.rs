@@ -50,7 +50,7 @@ impl SchnorrSignatureTarget {
         Self{ s, e }
     }
 
-    fn set_witness(&self, pw: &mut PartialWitness<GoldF>, sig: SchnorrSignature) -> Result<()> {
+    fn set_witness(&self, pw: &mut PartialWitness<GoldF>, sig: &SchnorrSignature) -> Result<()> {
         pw.set_target(self.s, GoldilocksField::from_canonical_u64(sig.s))?;
         pw.set_target(self.e, GoldilocksField::from_canonical_u64(sig.e))?;
         Ok(())
@@ -66,7 +66,7 @@ impl SchnorrPublicKeyTarget {
         Self{ pk: builder.add_virtual_target() }
     }
 
-    fn set_witness(&self, pw: &mut PartialWitness<GoldF>, pk: SchnorrPublicKey) -> Result<()> {
+    fn set_witness(&self, pw: &mut PartialWitness<GoldF>, pk: &SchnorrPublicKey) -> Result<()> {
         pw.set_target(self.pk, pk.pk)?;
         Ok(())
     }
@@ -224,7 +224,8 @@ impl SchnorrBuilder {
 #[cfg(test)]
 mod tests{
     use crate::schnorr::{SchnorrPublicKey, SchnorrSecretKey, SchnorrSigner, SchnorrSignature};
-    use crate::schnorr_prover::SchnorrBuilder;
+    use crate::schnorr_prover::{MessageTarget, SchnorrBuilder, SchnorrPublicKeyTarget, SchnorrSignatureTarget};
+    use plonky2::hash::poseidon::Poseidon;
     use plonky2::iop::target::Target;
     use plonky2::iop::witness::{PartialWitness, PartitionWitness, Witness, WitnessWrite};
     use plonky2::plonk::circuit_builder::CircuitBuilder;
@@ -295,14 +296,28 @@ mod tests{
         );
         let msg_size: usize = msg.len();
         let sig: SchnorrSignature = ss.sign(&msg, &sk, &mut rng);
-/* 
-        let sig_target = builder.constant(sig);
+
+        let pk_targ = SchnorrPublicKeyTarget::new_virtual(&mut builder);
+        let sig_targ = SchnorrSignatureTarget::new_virtual(&mut builder);
+        let msg_targ = MessageTarget::new_with_size(&mut builder, msg_size);
+
+        
         // instead of verifying we're going to prove the verification
-        sb.constrain_sig(
+        sb.constrain_sig::<PoseidonGoldilocksConfig> (
             &mut builder,
-            &sig,
-            &msg,
-            &pk
-        ); */
+            &sig_targ,
+            &msg_targ,
+            &pk_targ
+        );
+
+        // assign witnesses for verification
+        let mut pw: PartialWitness<F> = PartialWitness::new();
+        pk_targ.set_witness(&mut pw, &pk);
+        sig_targ.set_witness(&mut pw, &sig);
+        msg_targ.set_witness(&mut pw, &msg);
+
+
+        let data = builder.build::<C>();
+        let proof = data.prove(pw).unwrap();
     }
 }

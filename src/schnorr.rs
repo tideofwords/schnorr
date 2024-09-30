@@ -121,7 +121,6 @@ mod tests {
 
     #[test]
     fn test_sig() {
-        println!("NOT IMPLEMENTED");
         let mut rng: rand::rngs::ThreadRng = rand::thread_rng();
         let ss = SchnorrSigner::new();
         let sk: SchnorrSecretKey = SchnorrSecretKey{ sk: 1422 };
