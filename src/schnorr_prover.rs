@@ -214,18 +214,27 @@ mod tests{
         let config = CircuitConfig::standard_recursion_config();
         let mut builder = CircuitBuilder::<F, D>::new(config);
 
-        let a: Vec<Target> = vec![0, 1, 2, 65535, 65536, 65537, p - 4, p - 3, p - 2, p - 1]
-            .into_iter()
-            .map(|x| builder.constant(GoldilocksField::from_canonical_u64(x)))
-            .collect();
+        let a64: Vec<u64> = vec![0, 1, 2, 65535, 65536, 65537, p - 4, p - 3, p - 2, p - 1];
 
-        //let r0 = SchnorrBuilder::mod_65537(&mut builder, &a[0]);
+        let a: Vec<Target> = a64
+            .iter()
+            .map(|x| builder.constant(GoldilocksField::from_canonical_u64(*x)))
+            .collect();
 
         let r: Vec<Target> = a.iter()
             .map(|targ| SchnorrBuilder::mod_65537(&mut builder, *targ))
             .collect();
 
-        builder.register_public_inputs(&a);
+        let r_expected64: Vec<u64> = a64.iter().map(|x| x % 65537).collect();
+
+        println!("Expected residues mod 64: {:?}", r_expected64);
+
+        let r_expected: Vec<Target> = r_expected64.iter()
+            .map(|x| builder.constant(GoldilocksField::from_canonical_u64(*x)))
+            .collect();
+
+        r.iter().zip(r_expected.iter())
+            .for_each(|(x, y)| builder.connect(*x, *y));
         
         let mut pw: PartialWitness<F> = PartialWitness::new();
         let data = builder.build::<C>();
