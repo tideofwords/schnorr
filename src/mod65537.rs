@@ -19,6 +19,8 @@ use crate::schnorr::{SchnorrPublicKey, SchnorrSignature};
 
 type GoldF = GoldilocksField;
 
+// Helper function to constrain r = a % 65537 in a plonky2 circuit.
+
 #[derive(Debug, Default)]
 pub struct Mod65537Generator {
     a: Target,

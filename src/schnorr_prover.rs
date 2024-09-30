@@ -21,6 +21,12 @@ use crate::{
 
 type GoldF = GoldilocksField;
 
+// Functions to verify a Schnorr signature in a plonky2 circuit.
+
+// 8-bit security (i.e. totally insecure, DO NOT USE if you want any security at all)
+// because it uses the multiplicative group of the Goldilocks field
+// This is intended solely as a proof of concept.
+
 pub struct MessageTarget {
     msg: Vec<Target>,
 }

@@ -8,6 +8,13 @@ use rand::Rng;
 
 const BIG_GROUP_GEN: GoldilocksField = GoldilocksField(14293326489335486720);
 
+// No ZK here.
+// This is just a simple implementation of Schnorr signatures:
+// keygen, sign, and verify.
+
+// 8-bit security (i.e. totally insecure, DO NOT USE if you want any security at all)
+// because it uses the multiplicative group of the Goldilocks field
+
 #[derive(Copy, Clone, Debug)]
 pub struct SchnorrSigner {
     PRIME_GROUP_GEN: GoldilocksField,
