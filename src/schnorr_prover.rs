@@ -229,10 +229,11 @@ mod tests{
         
         let mut pw: PartialWitness<F> = PartialWitness::new();
         let data = builder.build::<C>();
-        let proof = data.prove(pw).ok()?;
+        let proof = data.prove(pw).unwrap();
 
         // introspect to check the values of stuff
 
+        ()
     }
 
     #[test]
