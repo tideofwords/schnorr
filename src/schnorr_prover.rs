@@ -91,13 +91,11 @@ impl SimpleGenerator<GoldF, 2> for Mod65537Generator {
             let a = src.read_target()?;
             let q = src.read_target()?;
             let r = src.read_target()?;
-            OK(Self { a, q, r })
+            Ok(Self { a, q, r })
     }
 }
 
-pub struct SchnorrBuilder {
-
-}
+pub struct SchnorrBuilder {}
 
 impl SchnorrBuilder {
     // Reduce a modulo the constant 65537
@@ -111,11 +109,11 @@ impl SchnorrBuilder {
     // (these first two checks guarantee that a lies in the range [0, p + 65536])
     // if q = floor(p / 65537) then r = 0
     // (note that p % 65537 == 1 so this is the only possibility)
-    fn mod_65537 <
-        C: GenericConfig<2, F = GoldF>,
+    pub(crate) fn mod_65537 <
+        //C: GenericConfig<2, F = GoldF>,
     > (
         builder: &mut CircuitBuilder::<GoldF, 2>,
-        a: &Target,
+        a: Target,
     ) -> Target {
         let q = builder.add_virtual_target();
         let r = builder.add_virtual_target();
@@ -127,27 +125,34 @@ impl SchnorrBuilder {
         // 1. a = 65537 * q + r
         let t65537 = builder.constant(GoldF::from_canonical_u64(65537));
         let a_copy = builder.mul_add(t65537, q, r);
-        builder.connect(*a, a_copy);
+        builder.connect(a, a_copy);
 
         // 2. 0 <= q <= floor(p / 65537)
         // max_q is 281470681743360 = floor(p / 65537) = (p-1) / 65537 = 2^48 - 2^32
         let max_q = builder.constant(GoldF::from_canonical_u64(281470681743360));
         builder.range_check(q, 48);
-        builder.range_check(builder.sub(max_q, q), 48);
+        let diff_q = builder.sub(max_q, q);
+        builder.range_check(diff_q, 48);
 
         // 3. 0 <= r < 65537
         let max_r = builder.constant(GoldF::from_canonical_u64(65537));
         builder.range_check(r, 17);
-        builder.range_check(builder.sub(max_r, r), 17);
+        let diff_r = builder.sub(max_r, r);
+        builder.range_check(diff_r, 17);
 
         // 4. if q = floor(p / 65537) then r = 0
         let q_equals_max = builder.is_equal(q, max_q);
-        builder.connect(builder.mul(q_equals_max.target, r), builder.zero());
+        let prod_temp = builder.mul(q_equals_max.target, r);
+        let zero_temp = builder.zero();
+        builder.connect(prod_temp, zero_temp);
+
+        // throw in the Generator to tell builder how to compute r
+        builder.add_simple_generator( Mod65537Generator {a, q, r} );
 
         r
     }
 
-    fn constrain_sig <
+    pub fn constrain_sig <
         C: GenericConfig<2, F = GoldF>,
     > (
         &self,
@@ -156,6 +161,8 @@ impl SchnorrBuilder {
         msg: &MessageTarget,
         pk: &SchnorrPublicKeyTarget,
     ) -> () {
+        println!("WARNING constrain_sig() is not done yet DONT USE IT");
+
         let PRIME_GROUP_GEN: Target = builder.constant(GoldF::from_canonical_u64(6612579038192137166));
         let PRIME_GROUP_ORDER: Target = builder.constant(GoldF::from_canonical_u64(65537));
         const num_bits_exp: usize = 32;
@@ -177,7 +184,7 @@ impl SchnorrBuilder {
             .collect();
         let e: Target = builder.hash_n_to_hash_no_pad::<PoseidonHash>(
             hash_input,
-        ).elements[0] // whoops have to take mod group order;
+        ).elements[0]; // whoops have to take mod group order;
 
         // enforce equality
         builder.connect(e, sig.e);
@@ -188,11 +195,45 @@ impl SchnorrBuilder {
 mod tests{
     use crate::schnorr::{SchnorrPublicKey, SchnorrSecretKey, SchnorrSigner, SchnorrSignature};
     use crate::schnorr_prover::SchnorrBuilder;
+    use plonky2::iop::target::Target;
+    use plonky2::iop::witness::{PartialWitness, PartitionWitness, Witness, WitnessWrite};
     use plonky2::plonk::circuit_builder::CircuitBuilder;
     use plonky2::plonk::circuit_data::{CircuitConfig, CircuitData, CommonCircuitData, VerifierCircuitData, VerifierOnlyCircuitData};
     use plonky2::plonk::config::{GenericConfig, PoseidonGoldilocksConfig};
     use plonky2::field::goldilocks_field::GoldilocksField;
+    use plonky2::field::types::Field;
     use rand;
+
+    #[test]
+    fn test_mod65537() -> () {
+        const D: usize = 2;
+        const p: u64 = 18446744069414584321;  // the Goldilocks prime
+        type C = PoseidonGoldilocksConfig;
+        type F = <C as GenericConfig<D>>::F;
+
+        let config = CircuitConfig::standard_recursion_config();
+        let mut builder = CircuitBuilder::<F, D>::new(config);
+
+        let a: Vec<Target> = vec![0, 1, 2, 65535, 65536, 65537, p - 4, p - 3, p - 2, p - 1]
+            .into_iter()
+            .map(|x| builder.constant(GoldilocksField::from_canonical_u64(x)))
+            .collect();
+
+        //let r0 = SchnorrBuilder::mod_65537(&mut builder, &a[0]);
+
+        let r: Vec<Target> = a.iter()
+            .map(|targ| SchnorrBuilder::mod_65537(&mut builder, *targ))
+            .collect();
+
+        builder.register_public_inputs(&a);
+        
+        let mut pw: PartialWitness<F> = PartialWitness::new();
+        let data = builder.build::<C>();
+        let proof = data.prove(pw).ok()?;
+
+        // introspect to check the values of stuff
+
+    }
 
     #[test]
     fn test_schnorr() -> () {
@@ -205,8 +246,6 @@ mod tests{
         let config = CircuitConfig::standard_recursion_config();
         let mut builder = CircuitBuilder::<F, D>::new(config);
 
-        builder.add_virtual_fri_proof(num_leaves_per_oracle, params)
-
         let sb: SchnorrBuilder = SchnorrBuilder{};
 
         // create keypair, message, signature
@@ -218,7 +257,7 @@ mod tests{
         );
         let msg_size: usize = msg.len();
         let sig: SchnorrSignature = ss.sign(&msg, &sk, &mut rng);
-
+/* 
         let sig_target = builder.constant(sig);
         // instead of verifying we're going to prove the verification
         sb.constrain_sig(
@@ -226,6 +265,6 @@ mod tests{
             &sig,
             &msg,
             &pk
-        );
+        ); */
     }
 }
