@@ -13,6 +13,8 @@ use plonky2::plonk::config::{GenericConfig, PoseidonGoldilocksConfig};
 use plonky2::plonk::proof::ProofWithPublicInputs;
 use plonky2::util::serialization::{Buffer, IoResult, Read, Write};
 
+use crate::schnorr::{SchnorrPublicKey, SchnorrSignature};
+
 type GoldF = GoldilocksField;
 
 pub struct MessageTarget {
@@ -24,6 +26,15 @@ impl MessageTarget {
         Self {
             msg: builder.add_virtual_targets(n),
         }
+    }
+
+    fn set_witness(&self, pw: &mut PartialWitness<GoldF>, msg: &Vec<GoldF>) -> Result<()> {
+        assert!(msg.len() == self.msg.len());
+        for (&t, &x) in self.msg.iter().zip(msg.iter()) {
+            pw.set_target(t, x)?;
+        }
+
+        Ok(())
     }
 }
 
@@ -38,10 +49,27 @@ impl SchnorrSignatureTarget {
         let e = builder.add_virtual_target();
         Self{ s, e }
     }
+
+    fn set_witness(&self, pw: &mut PartialWitness<GoldF>, sig: SchnorrSignature) -> Result<()> {
+        pw.set_target(self.s, GoldilocksField::from_canonical_u64(sig.s))?;
+        pw.set_target(self.e, GoldilocksField::from_canonical_u64(sig.e))?;
+        Ok(())
+    }
 }
 
 pub struct SchnorrPublicKeyTarget {
     pk: Target,
+}
+
+impl SchnorrPublicKeyTarget {
+    fn new_virtual(builder: &mut CircuitBuilder<GoldF, 2>) -> Self {
+        Self{ pk: builder.add_virtual_target() }
+    }
+
+    fn set_witness(&self, pw: &mut PartialWitness<GoldF>, pk: SchnorrPublicKey) -> Result<()> {
+        pw.set_target(self.pk, pk.pk)?;
+        Ok(())
+    }
 }
 
 #[derive(Debug, Default)]
@@ -227,10 +255,10 @@ mod tests{
             .map(|targ| SchnorrBuilder::mod_65537(&mut builder, *targ))
             .collect();
 
+        // check that the outputs are correct,
+        // obviously you don't need this in your own code
         let r_expected64: Vec<u64> = a64.iter().map(|x| x % 65537).collect();
-
         println!("Expected residues mod 64: {:?}", r_expected64);
-
         let r_expected: Vec<Target> = r_expected64.iter()
             .map(|x| builder.constant(GoldilocksField::from_canonical_u64(*x)))
             .collect();
@@ -241,8 +269,6 @@ mod tests{
         let mut pw: PartialWitness<F> = PartialWitness::new();
         let data = builder.build::<C>();
         let proof = data.prove(pw).unwrap();
-
-        // introspect to check the values of stuff
 
         ()
     }
