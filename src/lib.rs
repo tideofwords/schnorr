@@ -1,3 +1,3 @@
-mod mod65537;
-mod schnorr;
-mod schnorr_prover;
+pub mod mod65537;
+pub mod schnorr;
+pub mod schnorr_prover;
