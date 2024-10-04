@@ -25,6 +25,10 @@ pub struct MessageTarget {
     pub msg: Vec<Target>,
 }
 
+pub struct HashedMessageTarget {
+    pub h: Target,
+}
+
 impl MessageTarget {
     pub fn new_with_size(builder: &mut CircuitBuilder<GoldF, 2>, n: usize) -> Self {
         Self {
@@ -84,19 +88,26 @@ impl SchnorrPublicKeyTarget {
 pub struct SchnorrBuilder {}
 
 pub trait SignatureVerifierBuilder {
+
     fn constrain_sig<C: GenericConfig<2, F = GoldF>>(
         &self,
         builder: &mut CircuitBuilder<GoldF, 2>,
         sig: &SchnorrSignatureTarget,
-        msg: &MessageTarget,
+        h: &HashedMessageTarget,
         pk: &SchnorrPublicKeyTarget,
     );
+
+    fn hash_message<C: GenericConfig<2, F = GoldF>>(
+        &self, 
+        builder: &mut CircuitBuilder<GoldF, 2>,
+        msg: &MessageTarget,
+    ) -> HashedMessageTarget;
 
     fn verify_sig<C: GenericConfig<2, F = GoldF>>(
         &self,
         builder: &mut CircuitBuilder<GoldF, 2>,
         sig: &SchnorrSignatureTarget,
-        msg: &MessageTarget,
+        h: &HashedMessageTarget,
         pk: &SchnorrPublicKeyTarget,
     ) -> BoolTarget;
 }
@@ -106,19 +117,31 @@ impl SignatureVerifierBuilder for SchnorrBuilder {
         &self,
         builder: &mut CircuitBuilder<GoldF, 2>,
         sig: &SchnorrSignatureTarget,
-        msg: &MessageTarget,
+        h: &HashedMessageTarget,
         pk: &SchnorrPublicKeyTarget,
     ) -> () {
-        let verification_output = self.verify_sig::<C>(builder, sig, msg, pk);
+        let verification_output = self.verify_sig::<C>(builder, sig, &h, pk);
         let true_target = builder._true();
         builder.connect(verification_output.target, true_target.target);
+    }
+
+    fn hash_message<C: GenericConfig<2, F = GoldF>>(
+        &self, 
+        builder: &mut CircuitBuilder<GoldF, 2>,
+        msg: &MessageTarget,
+    ) -> HashedMessageTarget {
+        let hash_in: Vec<Target> = msg.msg.iter().cloned().collect();
+        let hash_out: Target = builder
+            .hash_n_to_hash_no_pad::<PoseidonHash>(hash_in)
+            .elements[0];
+        HashedMessageTarget { h: hash_out, }
     }
 
     fn verify_sig<C: GenericConfig<2, F = GoldF>>(
         &self,
         builder: &mut CircuitBuilder<GoldF, 2>,
         sig: &SchnorrSignatureTarget,
-        msg: &MessageTarget,
+        h: &HashedMessageTarget,
         pk: &SchnorrPublicKeyTarget,
     ) -> BoolTarget {
         let PRIME_GROUP_GEN: Target =
@@ -139,7 +162,7 @@ impl SignatureVerifierBuilder for SchnorrBuilder {
 
         // compute hash
         // note that it's safe to clone Targets since they just contain indices
-        let hash_input: Vec<Target> = std::iter::once(r).chain(msg.msg.iter().cloned()).collect();
+        let hash_input: Vec<Target> = vec![r, h.h];
         let hash_output: Target = builder
             .hash_n_to_hash_no_pad::<PoseidonHash>(hash_input)
             .elements[0]; // whoops have to take mod group order;
@@ -192,7 +215,8 @@ mod tests {
         let sig_targ = SchnorrSignatureTarget::new_virtual(&mut builder);
         let msg_targ = MessageTarget::new_with_size(&mut builder, msg_size);
 
-        sb.constrain_sig::<PoseidonGoldilocksConfig>(&mut builder, &sig_targ, &msg_targ, &pk_targ);
+        let h = sb.hash_message::<C>(&mut builder, &msg_targ);
+        sb.constrain_sig::<PoseidonGoldilocksConfig>(&mut builder, &sig_targ, &h, &pk_targ);
 
         // assign witnesses for verification
         let mut pw: PartialWitness<F> = PartialWitness::new();
@@ -231,8 +255,9 @@ mod tests {
         let sig_targ = SchnorrSignatureTarget::new_virtual(&mut builder);
         let msg_targ = MessageTarget::new_with_size(&mut builder, msg_size);
 
+        let h = sb.hash_message::<C>(&mut builder, &msg_targ);
         let verification_result =
-            sb.verify_sig::<PoseidonGoldilocksConfig>(&mut builder, &sig_targ, &msg_targ, &pk_targ);
+            sb.verify_sig::<PoseidonGoldilocksConfig>(&mut builder, &sig_targ, &h, &pk_targ);
 
         // assign witnesses for verification
         let mut pw: PartialWitness<F> = PartialWitness::new();
@@ -276,8 +301,9 @@ mod tests {
         let sig_targ = SchnorrSignatureTarget::new_virtual(&mut builder);
         let msg_targ = MessageTarget::new_with_size(&mut builder, msg_size);
 
+        let h = sb.hash_message::<C>(&mut builder, &msg_targ);
         let verification_result =
-            sb.verify_sig::<PoseidonGoldilocksConfig>(&mut builder, &sig_targ, &msg_targ, &pk_targ);
+            sb.verify_sig::<PoseidonGoldilocksConfig>(&mut builder, &sig_targ, &h, &pk_targ);
 
         // assign witnesses for verification
         let mut pw: PartialWitness<F> = PartialWitness::new();

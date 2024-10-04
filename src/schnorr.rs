@@ -100,6 +100,10 @@ impl SchnorrSigner{
         SchnorrSignature{e, s}
     }
 
+    pub fn digest_and_sign(&self, msg: &Vec<GoldilocksField>, sk: &SchnorrSecretKey, rng: &mut rand::rngs::ThreadRng) -> SchnorrSignature {
+        
+    }
+
     pub fn verify(&self, sig: &SchnorrSignature, msg: &Vec<GoldilocksField>, pk: &SchnorrPublicKey) -> bool {
         let r: GoldilocksField = Self::pow(self.PRIME_GROUP_GEN, sig.s)
             * Self::pow(pk.pk, sig.e);
