@@ -94,7 +94,7 @@ impl SchnorrSigner{
         assert!(k < self.PRIME_GROUP_ORDER);
         assert!(sk.sk < self.PRIME_GROUP_ORDER);
         assert!(e < self.PRIME_GROUP_ORDER);
-        let mut s128: u128 = ((k as u128) + (sk.sk as u128) * (e as u128));
+        let mut s128: u128 = (k as u128) + (sk.sk as u128) * (e as u128);
         s128 %= self.PRIME_GROUP_ORDER as u128;
         let s: u64 = s128 as u64;
         SchnorrSignature{e, s}
