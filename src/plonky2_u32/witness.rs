@@ -28,6 +28,6 @@ pub trait GeneratedValuesU32<F: Field> {
 
 impl<F: Field> GeneratedValuesU32<F> for GeneratedValues<F> {
     fn set_u32_target(&mut self, target: U32Target, value: u32) {
-        self.set_target(target.0, F::from_canonical_u32(value))
+        self.set_target(target.0, F::from_canonical_u32(value));
     }
 }

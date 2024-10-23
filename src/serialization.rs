@@ -48,7 +48,7 @@ impl ReadBigUintTarget for Buffer<'_> {
 #[cfg(test)]
 mod tests {
     use plonky2::iop::{target::Target, wire::Wire};
-    use plonky2_u32::gadgets::arithmetic_u32::U32Target;
+    use crate::plonky2_u32::gadgets::arithmetic_u32::U32Target;
 
     use super::*;
 

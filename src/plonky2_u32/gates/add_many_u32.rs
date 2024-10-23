@@ -1,6 +1,7 @@
 // use alloc::format;
 // use alloc::string::{String, ToString};
 // use alloc::vec::Vec;
+use anyhow::Error;
 use core::marker::PhantomData;
 use plonky2::util::serialization::{Buffer, IoResult, Read, Write};
 
@@ -328,7 +329,7 @@ impl<F: RichField + Extendable<D>, const D: usize> SimpleGenerator<F, D>
             .collect()
     }
 
-    fn run_once(&self, witness: &PartitionWitness<F>, out_buffer: &mut GeneratedValues<F>) {
+    fn run_once(&self, witness: &PartitionWitness<F>, out_buffer: &mut GeneratedValues<F>) -> Result<(), Error> {
         let local_wire = |column| Wire {
             row: self.row,
             column,
@@ -377,6 +378,7 @@ impl<F: RichField + Extendable<D>, const D: usize> SimpleGenerator<F, D>
             let wire = local_wire(self.gate.wire_ith_output_jth_limb(self.i, j));
             out_buffer.set_wire(wire, limb);
         }
+        Ok(())
     }
 }
 
