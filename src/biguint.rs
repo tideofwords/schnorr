@@ -1,5 +1,5 @@
-use alloc::vec;
-use alloc::vec::Vec;
+// use alloc::vec;
+// use alloc::vec::Vec;
 use core::marker::PhantomData;
 
 use num::{BigUint, Integer, Zero};
@@ -10,9 +10,10 @@ use plonky2::iop::generator::{GeneratedValues, SimpleGenerator};
 use plonky2::iop::target::{BoolTarget, Target};
 use plonky2::iop::witness::{PartitionWitness, Witness};
 use plonky2::plonk::circuit_builder::CircuitBuilder;
-use plonky2_u32::gadgets::arithmetic_u32::{CircuitBuilderU32, U32Target};
-use plonky2_u32::gadgets::multiple_comparison::list_le_u32_circuit;
-use plonky2_u32::witness::{GeneratedValuesU32, WitnessU32};
+use plonky2::util::serialization::Write;
+use crate::plonky2_u32::gadgets::arithmetic_u32::{CircuitBuilderU32, U32Target};
+use crate::plonky2_u32::gadgets::multiple_comparison::list_le_u32_circuit;
+use crate::plonky2_u32::witness::{GeneratedValuesU32, WitnessU32};
 
 #[derive(Clone, Debug)]
 pub struct BigUintTarget {
@@ -322,9 +323,13 @@ struct BigUintDivRemGenerator<F: RichField + Extendable<D>, const D: usize> {
     _phantom: PhantomData<F>,
 }
 
-impl<F: RichField + Extendable<D>, const D: usize> SimpleGenerator<F>
+impl<F: RichField + Extendable<D>, const D: usize> SimpleGenerator<F, D>
     for BigUintDivRemGenerator<F, D>
 {
+    fn id(&self) -> String {
+        "BigUintDivRemGenerator".to_string()
+    }
+    
     fn dependencies(&self) -> Vec<Target> {
         self.a
             .limbs
@@ -342,6 +347,32 @@ impl<F: RichField + Extendable<D>, const D: usize> SimpleGenerator<F>
         out_buffer.set_biguint_target(&self.div, &div);
         out_buffer.set_biguint_target(&self.rem, &rem);
     }
+
+    fn serialize(
+        &self, 
+        dst: &mut Vec<u8>, 
+        common_data: &plonky2::plonk::circuit_data::CommonCircuitData<F, D>
+    ) -> plonky2::util::serialization::IoResult<()> {
+        let a_vec: &Vec<Target> = &self.a.limbs.iter().map(|x| x.0).collect();
+        dst.write_target_vec(a_vec);
+        let b_vec: &Vec<Target> = &self.b.limbs.iter().map(|x| x.0).collect();
+        dst.write_target_vec(b_vec);
+        let div_vec: &Vec<Target> = &self.div.limbs.iter().map(|x| x.0).collect();
+        dst.write_target_vec(div_vec);
+        let rem_vec: &Vec<Target> = &self.rem.limbs.iter().map(|x| x.0).collect();
+        dst.write_target_vec(rem_vec);
+        Ok(())
+    }
+
+    fn deserialize(
+        src: &mut plonky2::util::serialization::Buffer, 
+        common_data: &plonky2::plonk::circuit_data::CommonCircuitData<F, D>
+    ) -> plonky2::util::serialization::IoResult<Self>
+        where
+            Self: Sized 
+    {
+        
+    }
 }
 
 #[cfg(test)]
@@ -355,7 +386,7 @@ mod tests {
     use rand::rngs::OsRng;
     use rand::Rng;
 
-    use crate::gadgets::biguint::{CircuitBuilderBiguint, WitnessBigUint};
+    use crate::plonky2_u32::gadgets::biguint::{CircuitBuilderBiguint, WitnessBigUint};
 
     #[test]
     fn test_biguint_add() -> Result<()> {
