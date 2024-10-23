@@ -1,6 +1,8 @@
 // use alloc::string::{String, ToString};
 // use alloc::vec::Vec;
 // use alloc::{format, vec};
+
+use anyhow::Error;
 use core::marker::PhantomData;
 use plonky2::plonk::circuit_data::CommonCircuitData;
 use plonky2::util::serialization::{Buffer, IoResult, Read, Write};
@@ -197,7 +199,11 @@ impl<F: RichField + Extendable<D>, const D: usize> SimpleGenerator<F, D>
             .collect()
     }
 
-    fn run_once(&self, witness: &PartitionWitness<F>, out_buffer: &mut GeneratedValues<F>) {
+    fn run_once(
+        &self, 
+        witness: &PartitionWitness<F>, 
+        out_buffer: &mut GeneratedValues<F>
+    ) -> Result<(), Error> {
         let num_input_limbs = self.gate.num_input_limbs;
         for i in 0..num_input_limbs {
             let sum_value = witness
@@ -218,7 +224,8 @@ impl<F: RichField + Extendable<D>, const D: usize> SimpleGenerator<F, D>
             for (b, b_value) in limbs.zip(limbs_value) {
                 out_buffer.set_target(b, b_value);
             }
-        }
+        };
+        Ok(())
     }
 
     fn serialize(&self, dst: &mut Vec<u8>, common_data: &CommonCircuitData<F, D>) -> IoResult<()> {
